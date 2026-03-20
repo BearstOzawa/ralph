@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ralph | Issue-Driven AI Coding Agent</title>
+    <meta
+      name="description"
+      content="Ralph turns GitHub Issues into planned, validated, and reviewable Pull Requests with a stricter engineering loop."
+    />
+    <meta property="og:title" content="Ralph | Issue-Driven AI Coding Agent" />
+    <meta
+      property="og:description"
+      content="Plan first, execute one runnable subtask per run, validate before completion, and keep GitHub as the source of truth."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="./brand/png/ralph-social.png" />
+    <meta name="theme-color" content="#08111f" />
+    <link rel="icon" href="./brand/ralph-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar" id="top">
+        <a class="brand" href="#top" aria-label="Ralph home">
+          <img src="./brand/ralph-logo.svg" alt="Ralph" />
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-label="Toggle navigation">
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="nav">
+          <a href="#why">Why Ralph</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#comparison">Comparison</a>
+          <a href="#launch">Launch</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <div class="topbar-actions">
+          <a class="ghost-link" href="../README_CN.md">中文</a>
+          <a class="button button-secondary" href="https://github.com/BearstOzawa/ralph">GitHub</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero section reveal" id="hero">
+          <div class="hero-copy">
+            <div class="eyebrow">Issue-driven orchestration for real engineering work</div>
+            <h1>Let Ralph code while you sleep.</h1>
+            <p class="hero-text">
+              Ralph turns GitHub Issues into planned, validated, and reviewable Pull Requests. It is built for
+              larger tasks, stricter execution, and auditable repo-first delivery instead of brittle one-shot prompting.
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="https://github.com/BearstOzawa/ralph">Star on GitHub</a>
+              <a class="button button-secondary" href="#launch">See Quick Start</a>
+            </div>
+            <ul class="hero-meta">
+              <li><strong>Plan-first</strong><span>Break large work into runnable subtasks</span></li>
+              <li><strong>Validator-gated</strong><span>Completion depends on validation, not “code generated”</span></li>
+              <li><strong>Chat-to-repo</strong><span>Feishu triggers, GitHub stays the source of truth</span></li>
+            </ul>
+          </div>
+          <div class="hero-panel">
+            <div class="hero-card terminal-card">
+              <div class="terminal-bar">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="terminal-body">
+                <div class="terminal-line dim">GitHub Issue / Feishu command</div>
+                <div class="terminal-line">Ralph plans the task</div>
+                <div class="terminal-line">Ralph executes one runnable subtask</div>
+                <div class="terminal-line">Ralph validates the result</div>
+                <div class="terminal-line">Ralph updates the same draft PR</div>
+                <div class="terminal-line accent">Validation passes → issue closes</div>
+              </div>
+            </div>
+            <div class="hero-card image-card">
+              <img src="./brand/ralph-hero.svg" alt="Ralph hero artwork" />
+            </div>
+          </div>
+        </section>
+
+        <section class="trust section reveal">
+          <div class="stat">
+            <span class="stat-value">Issue → PR</span>
+            <span class="stat-label">A stricter engineering loop instead of a long prompt run</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">Single runnable subtask</span>
+            <span class="stat-label">Each workflow run advances one concrete step</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">GitHub as source of truth</span>
+            <span class="stat-label">Issues and PRs remain auditable at every stage</span>
+          </div>
+        </section>
+
+        <section class="section reveal" id="why">
+          <div class="section-heading">
+            <div class="eyebrow">Why Ralph</div>
+            <h2>Built for bigger tasks than a single friendly LLM loop can reliably handle</h2>
+            <p>
+              Ralph uses a stricter execution model: plan first, execute one runnable subtask per run, persist state,
+              keep the same PR alive, and only declare success when validation passes.
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <h3>Validator-first completion</h3>
+              <p>A branch with commits is not success. Ralph gates completion on explicit validation output.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Incremental orchestration</h3>
+              <p>Large tasks become runnable slices, reducing the chance of a brittle all-at-once rewrite.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Draft PR first</h3>
+              <p>Work becomes visible early without pretending the task is done.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Cross-repo ready</h3>
+              <p>A central Ralph deployment can dispatch to another target repo and keep routing attached.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Feishu ingress</h3>
+              <p>Create, approve, reject, and track tasks from chat while GitHub remains the execution truth.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Stateful by design</h3>
+              <p>Subtasks and execution snapshots persist across workflow runs, not just inside logs.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section reveal" id="workflow">
+          <div class="section-heading">
+            <div class="eyebrow">Workflow</div>
+            <h2>A practical loop for issue-driven automation</h2>
+          </div>
+          <div class="workflow-grid">
+            <article class="workflow-step">
+              <span>01</span>
+              <h3>Create an issue or send a Feishu command</h3>
+              <p>Describe the goal, requirements, constraints, and acceptance criteria.</p>
+            </article>
+            <article class="workflow-step">
+              <span>02</span>
+              <h3>Generate an execution plan</h3>
+              <p>Ralph decomposes larger work into subtasks and can pause for approval.</p>
+            </article>
+            <article class="workflow-step">
+              <span>03</span>
+              <h3>Execute one runnable subtask</h3>
+              <p>Each run makes one defensible change instead of trying to finish the whole project at once.</p>
+            </article>
+            <article class="workflow-step">
+              <span>04</span>
+              <h3>Validate, update PR, continue</h3>
+              <p>The same draft PR evolves until validation passes and the issue is ready to close.</p>
+            </article>
+          </div>
+          <div class="architecture-card">
+            <div class="arch-node">User / Team</div>
+            <div class="arch-arrow"></div>
+            <div class="arch-node">GitHub Issue / Feishu</div>
+            <div class="arch-arrow"></div>
+            <div class="arch-node">GitHub Actions</div>
+            <div class="arch-arrow"></div>
+            <div class="arch-node">Planner → Execution → Validator → PR</div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="comparison">
+          <div class="section-heading">
+            <div class="eyebrow">Comparison</div>
+            <h2>What changes when you stop treating generated code as finished work</h2>
+          </div>
+          <div class="comparison-table">
+            <div class="table-row table-head">
+              <div>Approach</div>
+              <div>Typical limitation</div>
+              <div>Ralph stance</div>
+            </div>
+            <div class="table-row">
+              <div>Single long-prompt coding agent</div>
+              <div>Loses structure on larger tasks</div>
+              <div>Plan first, then execute one runnable subtask at a time</div>
+            </div>
+            <div class="table-row">
+              <div>Trigger-only issue bot</div>
+              <div>Starts work but lacks persistent task memory</div>
+              <div>Persists subtasks and execution state across runs</div>
+            </div>
+            <div class="table-row">
+              <div>Chat-first coding workflow</div>
+              <div>Can drift away from audited repo state</div>
+              <div>GitHub issue and PR remain the source of truth</div>
+            </div>
+            <div class="table-row">
+              <div>Ungated code generation</div>
+              <div>“Generated” gets mistaken for “done”</div>
+              <div>Completion is gated by explicit validation</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="launch">
+          <div class="section-heading">
+            <div class="eyebrow">Quick Start</div>
+            <h2>Get Ralph running without building another platform around it</h2>
+          </div>
+          <div class="launch-grid">
+            <article class="launch-card">
+              <h3>1. Install into your repo</h3>
+              <pre><code>git clone https://github.com/YOUR_GITHUB_USER/ralph.git /tmp/ralph
+cd YOUR_PROJECT
+/tmp/ralph/scripts/setup.sh</code></pre>
+            </article>
+            <article class="launch-card">
+              <h3>2. Add credentials</h3>
+              <pre><code>Secrets:
+RALPH_API_KEY
+RALPH_GITHUB_TOKEN
+
+Variables:
+RALPH_API_BASE_URL
+RALPH_API_MODEL
+RALPH_LANG=zh-CN</code></pre>
+            </article>
+            <article class="launch-card">
+              <h3>3. Trigger work</h3>
+              <pre><code>/ralph
+Goal: redesign the homepage
+Requirements: modern style, responsive layout
+Constraints: keep current stack
+Acceptance: mobile works, no console errors</code></pre>
+            </article>
+          </div>
+          <div class="cta-strip">
+            <a class="button" href="https://github.com/BearstOzawa/ralph">View Repository</a>
+            <a class="button button-secondary" href="../feishu/README.md">Feishu Setup</a>
+            <a class="button button-secondary" href="./rearchitecture-plan.md">Architecture Notes</a>
+          </div>
+        </section>
+
+        <section class="section reveal" id="faq">
+          <div class="section-heading">
+            <div class="eyebrow">Use Cases</div>
+            <h2>Where Ralph fits best</h2>
+          </div>
+          <div class="faq-grid">
+            <article class="faq-card">
+              <h3>Overnight feature delivery</h3>
+              <p>Queue scoped issues during the day and wake up to a draft PR with validator feedback.</p>
+            </article>
+            <article class="faq-card">
+              <h3>Large refactors</h3>
+              <p>Break risky rewrites into planned runnable slices while preserving issue and PR continuity.</p>
+            </article>
+            <article class="faq-card">
+              <h3>Team chat to repo workflow</h3>
+              <p>Use Feishu for ingress and approvals, while every execution artifact stays anchored in GitHub.</p>
+            </article>
+            <article class="faq-card">
+              <h3>Cross-repo automation</h3>
+              <p>Operate a central Ralph deployment that can dispatch into other repositories with clear routing.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div>
+          <img src="./brand/ralph-mark.svg" alt="" />
+          <p>Issue-driven AI coding agent for reliable GitHub execution.</p>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/BearstOzawa/ralph">GitHub</a>
+          <a href="../README.md">README</a>
+          <a href="../README_CN.md">README_CN</a>
+          <a href="../feishu/README.md">Feishu</a>
+          <a href="./rearchitecture-plan.md">Architecture</a>
+        </div>
+      </footer>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
