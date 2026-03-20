@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ralph | 面向 GitHub 的可靠 AI 编码 Agent</title>
+    <meta
+      name="description"
+      content="Ralph 会把 GitHub Issue 变成有计划、有验证、可审查的 Pull Request，适合大任务和更严格的工程执行。"
+    />
+    <meta property="og:title" content="Ralph | 面向 GitHub 的可靠 AI 编码 Agent" />
+    <meta
+      property="og:description"
+      content="先规划、再逐步执行、验证通过才完成，让 GitHub 始终保持任务真相源。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="../brand/png/ralph-social.png" />
+    <meta name="theme-color" content="#08111f" />
+    <link rel="icon" href="../brand/ralph-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar" id="top">
+        <a class="brand" href="#top" aria-label="Ralph 首页">
+          <img src="../brand/ralph-logo.svg" alt="Ralph" />
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-label="切换导航">
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="nav">
+          <a href="#why">为什么是 Ralph</a>
+          <a href="#workflow">工作流</a>
+          <a href="#comparison">对比</a>
+          <a href="#launch">快速开始</a>
+          <a href="#faq">适用场景</a>
+        </nav>
+        <div class="topbar-actions">
+          <a class="ghost-link" href="../">English</a>
+          <a class="button button-secondary" href="https://github.com/BearstOzawa/ralph">GitHub</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero section reveal" id="hero">
+          <div class="hero-copy">
+            <div class="eyebrow">适合真实工程任务的 Issue 驱动编排器</div>
+            <h1>让 Ralph 替你写代码，你只管睡觉。</h1>
+            <p class="hero-text">
+              Ralph 会把 GitHub Issue 变成有计划、有验证、可审查的 Pull Request。它不是一条长 prompt
+              硬做到底，而是更接近工程编排器，特别适合大任务、长流程和需要审计的仓库协作。
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="https://github.com/BearstOzawa/ralph">去 GitHub 查看</a>
+              <a class="button button-secondary" href="#launch">看快速开始</a>
+            </div>
+            <ul class="hero-meta">
+              <li><strong>先规划</strong><span>把大任务拆成可运行的子任务，不再一次性硬改全项目</span></li>
+              <li><strong>验证门禁</strong><span>不是“生成了代码就算完成”，而是验证通过才算完成</span></li>
+              <li><strong>聊天到仓库</strong><span>飞书只负责入口和通知，GitHub 仍然是任务真相源</span></li>
+            </ul>
+          </div>
+          <div class="hero-panel">
+            <div class="hero-card terminal-card">
+              <div class="terminal-bar">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="terminal-body">
+                <div class="terminal-line dim">GitHub Issue / 飞书命令</div>
+                <div class="terminal-line">Ralph 先生成执行计划</div>
+                <div class="terminal-line">Ralph 执行一个可运行子任务</div>
+                <div class="terminal-line">Ralph 做验证</div>
+                <div class="terminal-line">Ralph 更新同一个 Draft PR</div>
+                <div class="terminal-line accent">验证通过 → 关闭 Issue</div>
+              </div>
+            </div>
+            <div class="hero-card image-card">
+              <img src="../brand/ralph-hero.svg" alt="Ralph 主视觉" />
+            </div>
+          </div>
+        </section>
+
+        <section class="trust section reveal">
+          <div class="stat">
+            <span class="stat-value">Issue → PR</span>
+            <span class="stat-label">不是长 prompt 编码，而是更严格的工程执行闭环</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">单次推进一个子任务</span>
+            <span class="stat-label">每次 workflow 只推进一个明确、可运行的步骤</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value">GitHub 作为真相源</span>
+            <span class="stat-label">Issue、评论和 PR 全程可审计，不脱离仓库状态</span>
+          </div>
+        </section>
+
+        <section class="section reveal" id="why">
+          <div class="section-heading">
+            <div class="eyebrow">为什么是 Ralph</div>
+            <h2>适合比“友好 LLM 单轮输出”更复杂、更长、更需要可靠性的任务</h2>
+            <p>
+              Ralph 的核心不是生成代码，而是控制执行节奏：先规划，再一次只执行一个可运行子任务，保存状态，持续更新同一个
+              PR，最后由验证结果决定任务是否真正完成。
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <h3>Validator-first 完成门禁</h3>
+              <p>不是“有提交就算成功”，而是必须由验证结果明确放行。</p>
+            </article>
+            <article class="feature-card">
+              <h3>增量编排执行</h3>
+              <p>把复杂任务拆成可连续推进的步骤，降低一次性重构失控的概率。</p>
+            </article>
+            <article class="feature-card">
+              <h3>Draft PR 优先</h3>
+              <p>工作尽早可见，但不会提前假装任务已经真正完成。</p>
+            </article>
+            <article class="feature-card">
+              <h3>跨仓库可用</h3>
+              <p>中心部署可以调度其他代码仓，并保留原始 issue 的路由与反馈。</p>
+            </article>
+            <article class="feature-card">
+              <h3>飞书入口</h3>
+              <p>团队可以在聊天里创建、审批、拒绝和跟踪任务，同时保持 GitHub 为执行真相源。</p>
+            </article>
+            <article class="feature-card">
+              <h3>天然有状态</h3>
+              <p>子任务与执行快照可以跨 workflow 持续存在，而不是散落在日志里。</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section reveal" id="workflow">
+          <div class="section-heading">
+            <div class="eyebrow">工作流</div>
+            <h2>一个更接近工程现实的 Issue 驱动自动化闭环</h2>
+          </div>
+          <div class="workflow-grid">
+            <article class="workflow-step">
+              <span>01</span>
+              <h3>创建 Issue 或发送飞书命令</h3>
+              <p>明确目标、要求、限制和验收标准，让任务可以被可靠地规划。</p>
+            </article>
+            <article class="workflow-step">
+              <span>02</span>
+              <h3>生成执行计划</h3>
+              <p>复杂任务会自动拆分为更可执行的子任务，必要时等待人工审批。</p>
+            </article>
+            <article class="workflow-step">
+              <span>03</span>
+              <h3>执行一个可运行子任务</h3>
+              <p>每次运行都做一个可以自证合理的步骤，而不是试图一次完成整个项目。</p>
+            </article>
+            <article class="workflow-step">
+              <span>04</span>
+              <h3>验证、更新 PR、继续推进</h3>
+              <p>同一个 Draft PR 持续演化，直到验证通过并满足关闭 issue 的条件。</p>
+            </article>
+          </div>
+          <div class="architecture-card">
+            <div class="arch-node">用户 / 团队</div>
+            <div class="arch-arrow"></div>
+            <div class="arch-node">GitHub Issue / 飞书</div>
+            <div class="arch-arrow"></div>
+            <div class="arch-node">GitHub Actions</div>
+            <div class="arch-arrow"></div>
+            <div class="arch-node">规划器 → 执行 → 验证 → PR</div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="comparison">
+          <div class="section-heading">
+            <div class="eyebrow">对比</div>
+            <h2>真正改变的是：你不再把“生成了代码”误认为“工程已经完成”</h2>
+          </div>
+          <div class="comparison-table">
+            <div class="table-row table-head">
+              <div>方式</div>
+              <div>常见问题</div>
+              <div>Ralph 的做法</div>
+            </div>
+            <div class="table-row">
+              <div>一次性长 prompt 编码 Agent</div>
+              <div>任务一大就丢结构、丢上下文或失控</div>
+              <div>先规划，再一次只执行一个可运行子任务</div>
+            </div>
+            <div class="table-row">
+              <div>纯触发型 issue bot</div>
+              <div>能启动任务，但缺少持续状态记忆</div>
+              <div>在多次 workflow 之间持久化子任务和执行状态</div>
+            </div>
+            <div class="table-row">
+              <div>聊天优先编码流程</div>
+              <div>容易和仓库真实状态脱节</div>
+              <div>始终以 GitHub issue 和 PR 为真相源</div>
+            </div>
+            <div class="table-row">
+              <div>没有门禁的代码生成</div>
+              <div>“生成了代码”容易被误判成“任务完成”</div>
+              <div>只有验证通过才算真正完成</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="launch">
+          <div class="section-heading">
+            <div class="eyebrow">快速开始</div>
+            <h2>不需要额外搭一整套平台，也能让 Ralph 跑起来</h2>
+          </div>
+          <div class="launch-grid">
+            <article class="launch-card">
+              <h3>1. 安装到你的仓库</h3>
+              <pre><code>git clone https://github.com/YOUR_GITHUB_USER/ralph.git /tmp/ralph
+cd YOUR_PROJECT
+/tmp/ralph/scripts/setup.sh</code></pre>
+            </article>
+            <article class="launch-card">
+              <h3>2. 配置凭据</h3>
+              <pre><code>Secrets:
+RALPH_API_KEY
+RALPH_GITHUB_TOKEN
+
+Variables:
+RALPH_API_BASE_URL
+RALPH_API_MODEL
+RALPH_LANG=zh-CN</code></pre>
+            </article>
+            <article class="launch-card">
+              <h3>3. 开始触发任务</h3>
+              <pre><code>/ralph
+目标：重做首页
+要求：现代风格，响应式布局
+限制：保持当前技术栈
+验收：移动端正常，无控制台报错</code></pre>
+            </article>
+          </div>
+          <div class="cta-strip">
+            <a class="button" href="https://github.com/BearstOzawa/ralph">查看仓库</a>
+            <a class="button button-secondary" href="https://github.com/BearstOzawa/ralph/blob/main/feishu/README.md">飞书接入</a>
+            <a class="button button-secondary" href="https://github.com/BearstOzawa/ralph/blob/main/docs/rearchitecture-plan.md">架构说明</a>
+          </div>
+        </section>
+
+        <section class="section reveal" id="faq">
+          <div class="section-heading">
+            <div class="eyebrow">适用场景</div>
+            <h2>Ralph 最适合这些需要“可靠推进”而不是“单轮输出”的任务</h2>
+          </div>
+          <div class="faq-grid">
+            <article class="faq-card">
+              <h3>夜间自动交付功能</h3>
+              <p>白天写好 issue，晚上自动执行，早上直接看 Draft PR 和验证结果。</p>
+            </article>
+            <article class="faq-card">
+              <h3>大任务和重构</h3>
+              <p>把高风险变更拆成可连续推进的步骤，降低一次性改动失控的风险。</p>
+            </article>
+            <article class="faq-card">
+              <h3>团队聊天驱动研发</h3>
+              <p>飞书里发起和控制任务，所有执行痕迹仍然回到 GitHub 仓库里。</p>
+            </article>
+            <article class="faq-card">
+              <h3>跨仓库自动化</h3>
+              <p>中心 Ralph 部署可以调度其他仓库，同时保留清晰的任务路由和反馈链路。</p>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div>
+          <img src="../brand/ralph-mark.svg" alt="" />
+          <p>一个面向 GitHub 可靠执行的 Issue 驱动型 AI 编码 Agent。</p>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/BearstOzawa/ralph">GitHub</a>
+          <a href="https://github.com/BearstOzawa/ralph/blob/main/README.md">README</a>
+          <a href="https://github.com/BearstOzawa/ralph/blob/main/README_CN.md">README_CN</a>
+          <a href="https://github.com/BearstOzawa/ralph/blob/main/feishu/README.md">Feishu</a>
+          <a href="https://github.com/BearstOzawa/ralph/blob/main/docs/rearchitecture-plan.md">Architecture</a>
+        </div>
+      </footer>
+    </div>
+
+    <script src="../app.js"></script>
+  </body>
+</html>
