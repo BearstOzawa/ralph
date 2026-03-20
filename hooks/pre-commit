@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# 🐺 Ralph Anti-Cheat Hook
+#
+# Prevents the Ralph agent from modifying test files.
+# Tests must be written by humans to ensure code quality.
+#
+# Install: cp hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -euo pipefail
+
+PROTECTED_PATTERNS=(
+  "_test\."
+  "_spec\."
+  "^test_"
+  "\.test\."
+  "\.spec\."
+  "__tests__/"
+  "__snapshots__/"
+)
+
+FILES=$(git diff --cached --name-only 2>/dev/null || true)
+BLOCKED=false
+
+for file in $FILES; do
+  for pattern in "${PROTECTED_PATTERNS[@]}"; do
+    if echo "$file" | grep -qE "$pattern"; then
+      echo "🐺 BLOCKED: Ralph cannot modify test file: $file"
+      BLOCKED=true
+    fi
+  done
+done
+
+if [ "$BLOCKED" = true ]; then
+  echo ""
+  echo "🐺 Anti-cheat: Test files must be written by humans."
+  echo "   Ralph can only modify implementation code."
+  exit 1
+fi

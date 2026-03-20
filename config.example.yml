@@ -1,0 +1,86 @@
+# 🐺 Ralph Configuration
+# Customize via environment variables or this file.
+
+agent:
+  # AI coding backend: opencode | llm
+  # Auto priority: opencode (needs RALPH_API_KEY) > llm (fallback)
+  # opencode supports any OpenAI-compatible API and has full agent capabilities (file R/W, tools)
+  backend: auto
+
+  # Maximum retry iterations before giving up (legacy mode)
+  max_iterations: 5
+
+  # Timeout per iteration (minutes)
+  timeout_minutes: 30
+
+api:
+  # API protocol: openai | anthropic
+  # Both official and compatible endpoints are supported (e.g., LongCat, OneAPI)
+  protocol: openai
+
+  # API base URL (without /v1/... suffix)
+  # base_url: https://your-api-provider.com/openai
+
+  # Model name
+  # model: your-model-name
+
+  # API key (set via RALPH_API_KEY secret, not here)
+  # key: sk-xxx
+
+plan:
+  # Planning mode: auto | always | off
+  #   auto:   use Plan-and-Execute when LLM API is available
+  #   always: force Plan-and-Execute (requires LLM API key)
+  #   off:    use legacy loop (backward compatible)
+  mode: auto
+
+  # Require human approval before executing the plan.
+  # When true, Ralph posts the plan on the issue and waits
+  # for `/approve` comment or `ai/plan-approved` label.
+  # When false, auto-proceeds (unless complexity is "ambiguous").
+  require_approval: false
+
+  # Minutes to wait for human approval before timing out.
+  approval_timeout: 30
+
+  # Max ReAct retries per subtask (Reason → Act → Observe).
+  react_max_retries: 3
+
+tests:
+  # Command to run tests. Auto-detected if empty:
+  #   Makefile → make test
+  #   package.json → npm test
+  #   go.mod → go test ./...
+  #   Cargo.toml → cargo test
+  #   pyproject.toml → pytest
+  command: ""
+
+  # File patterns Ralph is NOT allowed to modify.
+  # Enforced via git pre-commit hook (anti-cheat).
+  protected_patterns:
+    - "*_test.*"
+    - "*_spec.*"
+    - "test_*.*"
+    - "*.test.*"
+
+repo:
+  # Allow Ralph to create new repos when target doesn't exist.
+  # Requires a RALPH_GITHUB_TOKEN with `repo` scope.
+  create_if_missing: false
+
+  # Default visibility for newly created repos.
+  default_visibility: public
+
+branch:
+  # Branch naming convention
+  prefix: ralph/issue-
+
+lang:
+  # Language for user-facing messages: zh | en
+  # Controls issue comments, Feishu cards, progress updates, etc.
+  default: zh
+
+notify:
+  on_start: true
+  on_success: true
+  on_failure: true

@@ -1,0 +1,20 @@
+# Ralph working directory
+.ralph/
+
+# Config with secrets
+config.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Cloudflare Worker local artifacts
+feishu/.wrangler/
+feishu/.wrangler-dist/
+feishu/wrangler.toml

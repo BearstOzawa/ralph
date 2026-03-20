@@ -1,0 +1,53 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="heroBg" x1="168" y1="64" x2="1438" y2="848" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16212D"/>
+      <stop offset="0.55" stop-color="#0D1721"/>
+      <stop offset="1" stop-color="#091017"/>
+    </linearGradient>
+    <linearGradient id="heroGlow" x1="268" y1="178" x2="1010" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EE6B3"/>
+      <stop offset="1" stop-color="#49A5FF"/>
+    </linearGradient>
+    <linearGradient id="heroMoon" x1="1238" y1="112" x2="1378" y2="252" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE8A3"/>
+      <stop offset="1" stop-color="#F7B95B"/>
+    </linearGradient>
+    <filter id="heroShadow" x="148" y="144" width="676" height="676" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#000000" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" rx="40" fill="#071017"/>
+  <rect x="24" y="24" width="1552" height="852" rx="32" fill="url(#heroBg)"/>
+  <circle cx="1272" cy="190" r="74" fill="url(#heroMoon)" opacity="0.98"/>
+  <circle cx="1306" cy="166" r="70" fill="#16212D"/>
+  <path d="M0 724C222 634 432 594 722 612C1012 630 1278 712 1600 840V900H0V724Z" fill="#0A141C"/>
+  <path d="M120 748C266 688 448 660 664 676C880 692 1128 760 1440 858" stroke="#203445" stroke-width="12" stroke-linecap="round" opacity="0.72"/>
+
+  <g filter="url(#heroShadow)">
+    <path d="M248 730L326 334L408 432L490 334L568 730H248Z" fill="#0D1721" stroke="url(#heroGlow)" stroke-width="24" stroke-linejoin="round"/>
+    <path d="M304 696L358 428L408 498L458 428L512 696" stroke="#D9FFF0" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+    <path d="M370 590L306 648" stroke="#7EE6B3" stroke-width="14" stroke-linecap="round"/>
+    <path d="M446 590L510 648" stroke="#49A5FF" stroke-width="14" stroke-linecap="round"/>
+    <path d="M388 642L408 660L428 642" stroke="#FFE8A3" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M318 334L364 270L396 358" stroke="url(#heroGlow)" stroke-width="20" stroke-linejoin="round"/>
+    <path d="M498 334L452 270L420 358" stroke="url(#heroGlow)" stroke-width="20" stroke-linejoin="round"/>
+  </g>
+
+  <g opacity="0.92">
+    <text x="688" y="332" fill="#F6FBFF" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="104" font-weight="700" letter-spacing="-2">Ralph</text>
+    <text x="692" y="404" fill="#7EE6B3" font-family="Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="700">issue -&gt; plan -&gt; subtask -&gt; validate -&gt; pr</text>
+    <text x="692" y="492" fill="#D9E8F3" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="500">An autonomous coding agent that does not fake completion.</text>
+    <text x="692" y="544" fill="#9DB2C4" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="24" font-weight="500">One runnable subtask per workflow run. Draft PR first. Validator as gatekeeper.</text>
+  </g>
+
+  <g opacity="0.94">
+    <rect x="692" y="628" width="212" height="64" rx="18" fill="#10232F" stroke="#25465C"/>
+    <text x="730" y="669" fill="#F6FBFF" font-family="Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="700">ai/ready</text>
+    <rect x="926" y="628" width="208" height="64" rx="18" fill="#10232F" stroke="#25465C"/>
+    <text x="956" y="669" fill="#F6FBFF" font-family="Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="700">draft pr</text>
+    <rect x="1160" y="628" width="246" height="64" rx="18" fill="#10232F" stroke="#25465C"/>
+    <text x="1190" y="669" fill="#F6FBFF" font-family="Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="700">validator pass</text>
+  </g>
+</svg>

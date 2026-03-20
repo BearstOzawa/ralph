@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="markBg" x1="80" y1="52" x2="432" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16212D"/>
+      <stop offset="1" stop-color="#091017"/>
+    </linearGradient>
+    <linearGradient id="markGlow" x1="150" y1="104" x2="352" y2="392" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EE6B3"/>
+      <stop offset="1" stop-color="#49A5FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="#081017"/>
+  <rect x="44" y="44" width="424" height="424" rx="100" fill="url(#markBg)"/>
+  <path d="M146 382L194 136L256 214L318 136L366 382H146Z" fill="#0D1721" stroke="url(#markGlow)" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M182 362L218 182L256 236L294 182L330 362" stroke="#E3FFF5" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M196 136L228 90L252 154" stroke="url(#markGlow)" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M316 136L284 90L260 154" stroke="url(#markGlow)" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M228 292L188 328" stroke="#7EE6B3" stroke-width="10" stroke-linecap="round"/>
+  <path d="M284 292L324 328" stroke="#49A5FF" stroke-width="10" stroke-linecap="round"/>
+  <path d="M246 326L256 336L266 326" stroke="#FFE8A3" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

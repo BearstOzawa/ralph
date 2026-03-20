@@ -1,0 +1,54 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="88" y1="44" x2="1168" y2="592" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16212D"/>
+      <stop offset="0.58" stop-color="#0D1721"/>
+      <stop offset="1" stop-color="#091017"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="180" y1="116" x2="632" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EE6B3"/>
+      <stop offset="1" stop-color="#49A5FF"/>
+    </linearGradient>
+    <linearGradient id="moon" x1="1006" y1="72" x2="1136" y2="202" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE8A3"/>
+      <stop offset="1" stop-color="#F7B95B"/>
+    </linearGradient>
+    <filter id="shadow" x="80" y="82" width="470" height="470" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#000000" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="640" rx="36" fill="#071017"/>
+  <rect x="18" y="18" width="1244" height="604" rx="28" fill="url(#bg)"/>
+  <circle cx="1066" cy="138" r="60" fill="url(#moon)"/>
+  <circle cx="1096" cy="118" r="58" fill="#16212D"/>
+  <path d="M0 510C160 444 340 414 580 428C820 442 1040 510 1280 606V640H0V510Z" fill="#0A141C"/>
+  <path d="M96 540C220 490 376 468 568 482C760 496 970 548 1160 610" stroke="#203445" stroke-width="10" stroke-linecap="round" opacity="0.72"/>
+
+  <g filter="url(#shadow)">
+    <path d="M150 510L208 216L270 290L332 216L390 510H150Z" fill="#0D1721" stroke="url(#glow)" stroke-width="18" stroke-linejoin="round"/>
+    <path d="M194 484L234 286L270 338L306 286L346 484" stroke="#D9FFF0" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+    <path d="M242 406L194 448" stroke="#7EE6B3" stroke-width="10" stroke-linecap="round"/>
+    <path d="M298 406L346 448" stroke="#49A5FF" stroke-width="10" stroke-linecap="round"/>
+    <path d="M256 444L270 456L284 444" stroke="#FFE8A3" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M202 216L236 170L258 236" stroke="url(#glow)" stroke-width="14" stroke-linejoin="round"/>
+    <path d="M338 216L304 170L282 236" stroke="url(#glow)" stroke-width="14" stroke-linejoin="round"/>
+  </g>
+
+  <g opacity="0.96">
+    <text x="500" y="230" fill="#F6FBFF" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="88" font-weight="700" letter-spacing="-2">Ralph</text>
+    <text x="502" y="282" fill="#7EE6B3" font-family="Menlo, Monaco, Consolas, monospace" font-size="20" font-weight="700">issue -&gt; plan -&gt; subtask -&gt; validate -&gt; pr</text>
+    <text x="500" y="362" fill="#F6FBFF" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="600">An issue-driven AI coding agent</text>
+    <text x="500" y="406" fill="#D9E8F3" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="500">for reliable GitHub execution</text>
+    <text x="500" y="470" fill="#9DB2C4" font-family="Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="500">Plan-first orchestration. Draft PR first. Validator-gated completion.</text>
+  </g>
+
+  <g opacity="0.96">
+    <rect x="500" y="520" width="166" height="50" rx="14" fill="#10232F" stroke="#25465C"/>
+    <text x="530" y="552" fill="#F6FBFF" font-family="Menlo, Monaco, Consolas, monospace" font-size="19" font-weight="700">ai/ready</text>
+    <rect x="682" y="520" width="166" height="50" rx="14" fill="#10232F" stroke="#25465C"/>
+    <text x="708" y="552" fill="#F6FBFF" font-family="Menlo, Monaco, Consolas, monospace" font-size="19" font-weight="700">draft pr</text>
+    <rect x="864" y="520" width="222" height="50" rx="14" fill="#10232F" stroke="#25465C"/>
+    <text x="892" y="552" fill="#F6FBFF" font-family="Menlo, Monaco, Consolas, monospace" font-size="19" font-weight="700">validator pass</text>
+  </g>
+</svg>

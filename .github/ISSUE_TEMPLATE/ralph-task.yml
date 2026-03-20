@@ -1,0 +1,98 @@
+name: Ralph Task
+description: Structured bilingual task input for Ralph passive triggers
+title: "[Ralph Task] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when you want Ralph to work from a GitHub Issue directly.
+        使用这个模板可以让 Ralph 直接从 GitHub Issue 执行任务。
+
+        After creating the issue, add the `ai/ready` label to trigger execution.
+        创建 Issue 后，添加 `ai/ready` 标签即可触发执行。
+
+        The more concrete this form is, the less likely Ralph is to stop for clarification.
+        这里写得越具体，Ralph 越不容易因为信息不足而停下来等待补充。
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective / 目标
+      description: What should Ralph deliver? / Ralph 最终要交付什么？
+      placeholder: |
+        Build a polished landing page for a family-themed site.
+        为家庭主题网站做一个精致的落地页。
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements / 要求
+      description: Concrete functional or design requirements / 具体功能或设计要求
+      placeholder: |
+        - Use a modern visual style
+        - Keep the page responsive
+        - Include hero, gallery, and family intro sections
+        - 使用现代视觉风格
+        - 保持响应式布局
+        - 包含 hero、相册、家庭介绍等模块
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints / 限制
+      description: Technical or business constraints Ralph must not violate / Ralph 不能违反的技术或业务限制
+      placeholder: |
+        - Do not change existing CI files
+        - Keep current framework and build tooling
+        - Avoid adding heavy dependencies
+        - 不要修改现有 CI 文件
+        - 保持当前框架和构建工具
+        - 避免引入重量级依赖
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria / 验收标准
+      description: How should completion be judged? / 如何判断任务完成？
+      placeholder: |
+        - Page renders correctly on desktop and mobile
+        - No console errors
+        - Existing build still passes
+        - 页面在桌面端和移动端都能正常显示
+        - 没有控制台报错
+        - 现有构建仍然通过
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        Recommended minimum:
+        建议至少满足以下最小输入质量：
+
+        - objective is specific / 目标足够具体
+        - requirements are concrete / 要求足够明确
+        - acceptance can be checked / 验收标准可以被检查
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context / 补充上下文
+      description: Existing files, references, screenshots, or notes / 现有文件、参考链接、截图或备注
+      placeholder: |
+        Relevant files:
+        - src/pages/index.tsx
+        - src/components/Hero.tsx
+        
+        相关文件：
+        - src/pages/index.tsx
+        - src/components/Hero.tsx
+    validations:
+      required: false

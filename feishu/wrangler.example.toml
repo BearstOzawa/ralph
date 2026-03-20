@@ -1,0 +1,15 @@
+name = "your-worker-name"
+main = "worker.js"
+compatibility_date = "2026-03-19"
+workers_dev = true
+preview_urls = false
+
+routes = [
+  { pattern = "ralph.example.com", zone_name = "example.com", custom_domain = true }
+]
+
+[vars]
+GITHUB_REPO = "owner/ralph"
+RALPH_API_BASE_URL = "https://your-openai-compatible-endpoint"
+RALPH_API_MODEL = "your-model-name"
+RALPH_LANG = "zh-CN"

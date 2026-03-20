@@ -1,0 +1,38 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="160" y1="112" x2="864" y2="912" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16212D"/>
+      <stop offset="1" stop-color="#0A1118"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="316" y1="186" x2="734" y2="834" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EE6B3"/>
+      <stop offset="1" stop-color="#49A5FF"/>
+    </linearGradient>
+    <linearGradient id="moon" x1="614" y1="162" x2="764" y2="312" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE8A3"/>
+      <stop offset="1" stop-color="#F7B95B"/>
+    </linearGradient>
+    <filter id="shadow" x="118" y="118" width="788" height="788" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="96" y="96" width="832" height="832" rx="208" fill="#081017"/>
+  <rect x="112" y="112" width="800" height="800" rx="192" fill="url(#bg)"/>
+  <circle cx="696" cy="240" r="78" fill="url(#moon)" opacity="0.96"/>
+  <circle cx="730" cy="214" r="74" fill="#16212D"/>
+
+  <g filter="url(#shadow)">
+    <path d="M328 742L418 286L512 398L606 286L696 742H328Z" fill="#0D1721" stroke="url(#glow)" stroke-width="28" stroke-linejoin="round"/>
+    <path d="M390 704L454 392L512 474L570 392L634 704" stroke="#D9FFF0" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+    <path d="M468 580L394 648" stroke="#7EE6B3" stroke-width="18" stroke-linecap="round"/>
+    <path d="M556 580L630 648" stroke="#49A5FF" stroke-width="18" stroke-linecap="round"/>
+    <path d="M488 640L512 662L536 640" stroke="#FFE8A3" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M410 286L462 212L500 314" fill="#0D1721"/>
+    <path d="M624 286L562 212L524 314" fill="#0D1721"/>
+    <path d="M410 286L462 212L500 314" stroke="url(#glow)" stroke-width="24" stroke-linejoin="round"/>
+    <path d="M624 286L562 212L524 314" stroke="url(#glow)" stroke-width="24" stroke-linejoin="round"/>
+  </g>
+
+  <path d="M246 788C332 744 392 730 512 730C632 730 692 744 778 788" stroke="#203445" stroke-width="16" stroke-linecap="round" opacity="0.8"/>
+</svg>

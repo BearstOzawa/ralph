@@ -1,0 +1,123 @@
+name: 🐺 Ralph Auto-Merge
+
+# Auto-merge Ralph PRs when all CI checks pass
+on:
+  # Triggered when PR checks complete
+  check_suite:
+    types: [completed]
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to auto-merge'
+        required: true
+        type: number
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    # Only run when all checks pass
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.check_suite.conclusion == 'success'
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Find and merge Ralph PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let prs = [];
+
+            if (context.eventName === 'workflow_dispatch') {
+              // Manually specified PR
+              const pr = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: ${{ github.event.inputs.pr_number || 0 }}
+              });
+              prs = [pr.data];
+            } else {
+              // Find all open Ralph PRs
+              const result = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                head: `${context.repo.owner}:ralph/`,
+                per_page: 10
+              });
+              // Filter to ralph branches only
+              prs = result.data.filter(pr => pr.head.ref.startsWith('ralph/'));
+            }
+
+            for (const pr of prs) {
+              console.log(`Checking PR #${pr.number}: ${pr.title}`);
+
+              // Check if PR is mergeable
+              if (!pr.mergeable) {
+                console.log(`  PR #${pr.number} is not mergeable, skipping`);
+                continue;
+              }
+
+              // Check all CI checks passed
+              const checks = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha
+              });
+
+              const allPassed = checks.data.check_runs.every(
+                run => run.conclusion === 'success' || run.conclusion === 'skipped'
+              );
+
+              if (!allPassed && checks.data.total_count > 0) {
+                console.log(`  PR #${pr.number} has failing checks, skipping`);
+                continue;
+              }
+
+              // Auto-merge
+              try {
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  merge_method: 'squash',
+                  commit_title: `${pr.title} (#${pr.number})`,
+                  commit_message: `Automatically merged by Ralph 🐺\n\nCloses #${pr.title.match(/#(\d+)/)?.[1] || ''}`
+                });
+                console.log(`  ✅ PR #${pr.number} merged!`);
+
+                // Delete branch
+                try {
+                  await github.rest.git.deleteRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: `heads/${pr.head.ref}`
+                  });
+                  console.log(`  🗑️ Branch ${pr.head.ref} deleted`);
+                } catch (e) {
+                  console.log(`  Branch deletion failed: ${e.message}`);
+                }
+
+                // Comment on the issue
+                const issueMatch = pr.title.match(/#(\d+)/);
+                if (issueMatch) {
+                  const issueNumber = parseInt(issueMatch[1]);
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    body: `🐺 Ralph's PR #${pr.number} has been automatically merged. Issue will be closed.\n\n✅ Code is now on \`main\`.`
+                  });
+                }
+              } catch (e) {
+                console.log(`  ❌ Failed to merge PR #${pr.number}: ${e.message}`);
+              }
+            }
+
+            if (prs.length === 0) {
+              console.log('No Ralph PRs found to merge.');
+            }

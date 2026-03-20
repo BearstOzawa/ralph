@@ -1,0 +1,1156 @@
+name: 🐺 Ralph — Autonomous Coding
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to work on'
+        required: true
+        type: string
+      target_repo:
+        description: 'Target repo (owner/repo). Leave empty for current repo.'
+        required: false
+        default: ''
+        type: string
+      issue_repo:
+        description: 'Repo where the issue lives (owner/repo). Defaults to target_repo. Used by /create when issue is in central repo.'
+        required: false
+        default: ''
+        type: string
+      create_repo:
+        description: 'Create target repo if it does not exist (true/false)'
+        required: false
+        default: 'false'
+        type: string
+      repo_visibility:
+        description: 'Visibility for newly created repo'
+        required: false
+        default: 'public'
+        type: choice
+        options:
+          - public
+          - private
+      repo_description:
+        description: 'Description for newly created repo (optional)'
+        required: false
+        default: ''
+        type: string
+      backend:
+        description: 'Agent backend (auto = detect from available keys)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - opencode
+          - llm
+      lang:
+        description: 'User-facing language'
+        required: false
+        default: 'zh-CN'
+        type: choice
+        options:
+          - zh-CN
+          - en-US
+      max_iterations:
+        description: 'Max coding iterations (increase for complex tasks)'
+        required: false
+        default: '5'
+        type: choice
+        options:
+          - '5'
+          - '10'
+          - '15'
+          - '20'
+      plan_mode:
+        description: 'Task planning mode (auto = plan for complex tasks)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - always
+          - 'off'
+      plan_execution_mode:
+        description: 'Plan executor mode (single = one runnable subtask per run)'
+        required: false
+        default: 'single'
+        type: choice
+        options:
+          - single
+          - multi
+      require_approval:
+        description: 'Require human approval before executing plan (true/false)'
+        required: false
+        default: 'false'
+        type: string
+      review_only:
+        description: 'Only run PR/formal review without code execution (true/false)'
+        required: false
+        default: 'false'
+        type: string
+      auto_merge:
+        description: 'Auto-merge PR if CI passes (true/false)'
+        required: false
+        default: 'false'
+        type: string
+      feishu_chat_id:
+        description: 'Feishu chat_id to send notifications to (auto-filled by Worker)'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  ralph:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.label.name == 'ai/ready')
+    concurrency:
+      group: ralph-${{ github.event.inputs.target_repo || github.repository }}-${{ github.event.inputs.issue_number || github.event.issue.number }}
+      cancel-in-progress: false
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.max_iterations > '10' && 180 || 90 }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Determine config
+        id: config
+        env:
+          HAS_API_KEY: ${{ secrets.RALPH_API_KEY != '' }}
+          REQUESTED_BACKEND: ${{ github.event.inputs.backend || 'auto' }}
+          DEFAULT_BACKEND: ${{ vars.RALPH_DEFAULT_BACKEND || '' }}
+          INPUT_TARGET_REPO: ${{ github.event.inputs.target_repo || '' }}
+          INPUT_ISSUE_REPO: ${{ github.event.inputs.issue_repo || '' }}
+          CREATE_REPO: ${{ github.event.inputs.create_repo || 'false' }}
+          GH_TOKEN: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # ── Handle issues.labeled trigger ──
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            TARGET="${{ github.repository }}"
+            echo "target_repo=$TARGET" >> $GITHUB_OUTPUT
+            echo "is_cross_repo=false" >> $GITHUB_OUTPUT
+            echo "target_owner=$(echo $TARGET | cut -d/ -f1)" >> $GITHUB_OUTPUT
+            echo "target_name=$(echo $TARGET | cut -d/ -f2)" >> $GITHUB_OUTPUT
+            # Issue is in the same repo
+            echo "issue_owner=$(echo $TARGET | cut -d/ -f1)" >> $GITHUB_OUTPUT
+            echo "issue_name=$(echo $TARGET | cut -d/ -f2)" >> $GITHUB_OUTPUT
+          else
+            # ── Handle workflow_dispatch trigger ──
+            echo "issue_number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
+            TARGET="$INPUT_TARGET_REPO"
+            if [ -z "$TARGET" ]; then
+              TARGET="${{ github.repository }}"
+            fi
+            echo "target_repo=$TARGET" >> $GITHUB_OUTPUT
+
+            IS_CROSS="false"
+            if [ "$TARGET" != "${{ github.repository }}" ]; then
+              IS_CROSS="true"
+            fi
+            echo "is_cross_repo=$IS_CROSS" >> $GITHUB_OUTPUT
+            echo "target_owner=$(echo $TARGET | cut -d/ -f1)" >> $GITHUB_OUTPUT
+            echo "target_name=$(echo $TARGET | cut -d/ -f2)" >> $GITHUB_OUTPUT
+
+            # Issue repo: defaults to target_repo, but /create puts issue in central repo
+            ISSUE_REPO="$INPUT_ISSUE_REPO"
+            if [ -z "$ISSUE_REPO" ]; then
+              ISSUE_REPO="$TARGET"
+            fi
+            echo "issue_owner=$(echo $ISSUE_REPO | cut -d/ -f1)" >> $GITHUB_OUTPUT
+            echo "issue_name=$(echo $ISSUE_REPO | cut -d/ -f2)" >> $GITHUB_OUTPUT
+          fi
+
+          ISSUE_BODY=$(gh api "/repos/${ISSUE_REPO}/issues/${ISSUE_NUMBER}" --jq '.body // ""' 2>/dev/null || echo "")
+          META_LANG=$(printf '%s' "$ISSUE_BODY" | python3 -c 'import json,re,sys; body=sys.stdin.read(); match=re.search(r"<!--\\s*ralph-meta:\\s*([\\s\\S]*?)\\s*-->", body, re.IGNORECASE); data=json.loads(match.group(1)) if match else {}; lang=str(data.get("lang","")).strip(); print(lang if lang else "")' 2>/dev/null || true)
+
+          # Check if target repo exists
+          REPO_EXISTS="true"
+          if ! gh repo view "$TARGET" >/dev/null 2>&1; then
+            REPO_EXISTS="false"
+          fi
+          echo "repo_exists=$REPO_EXISTS" >> $GITHUB_OUTPUT
+          echo "create_repo=$CREATE_REPO" >> $GITHUB_OUTPUT
+
+          # Backend priority: user default > opencode > llm
+          BACKEND="$REQUESTED_BACKEND"
+          if [ "$BACKEND" = "auto" ]; then
+            if [ -n "$DEFAULT_BACKEND" ]; then
+              BACKEND="$DEFAULT_BACKEND"
+            elif [ "$HAS_API_KEY" = "true" ]; then
+              BACKEND="opencode"
+            else
+              echo "::error::No API key found. Set RALPH_API_KEY in repo secrets."
+              exit 1
+            fi
+          fi
+
+          echo "backend=$BACKEND" >> $GITHUB_OUTPUT
+
+          LANG="${{ github.event.inputs.lang || '' }}"
+          if [ -z "$LANG" ] && [ -n "$META_LANG" ]; then
+            LANG="$META_LANG"
+          fi
+          if [ -z "$LANG" ]; then
+            LANG="${{ vars.RALPH_LANG || 'zh-CN' }}"
+          fi
+          echo "lang=$LANG" >> $GITHUB_OUTPUT
+
+          echo "feishu_chat_id=${{ github.event.inputs.feishu_chat_id || '' }}" >> $GITHUB_OUTPUT
+
+          echo "🐺 Backend: $BACKEND | Target: $TARGET | Exists: $REPO_EXISTS"
+
+      - name: Create target repository
+        if: steps.config.outputs.repo_exists == 'false' && steps.config.outputs.create_repo == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          TARGET_OWNER="${{ steps.config.outputs.target_owner }}"
+          TARGET_NAME="${{ steps.config.outputs.target_name }}"
+          VISIBILITY="${{ github.event.inputs.repo_visibility || 'public' }}"
+          DESCRIPTION="${{ github.event.inputs.repo_description || '' }}"
+          CURRENT_USER=$(gh api user -q '.login')
+
+          echo "🐺 Creating repo: ${TARGET_OWNER}/${TARGET_NAME} (${VISIBILITY})"
+
+          if [ "$TARGET_OWNER" = "$CURRENT_USER" ]; then
+            # Personal repo
+            gh repo create "${TARGET_NAME}" \
+              --"${VISIBILITY}" \
+              --description "${DESCRIPTION:-Created by Ralph AI}" \
+              --clone=false
+          else
+            # Org repo
+            gh repo create "${TARGET_OWNER}/${TARGET_NAME}" \
+              --"${VISIBILITY}" \
+              --description "${DESCRIPTION:-Created by Ralph AI}" \
+              --clone=false
+          fi
+
+          echo "✅ Repo created: ${TARGET_OWNER}/${TARGET_NAME}"
+          # Wait for GitHub to propagate
+          sleep 3
+
+      - name: Fail if repo missing and create not requested
+        if: steps.config.outputs.repo_exists == 'false' && steps.config.outputs.create_repo != 'true'
+        run: |
+          echo "::error::Target repo ${{ steps.config.outputs.target_repo }} does not exist. Set create_repo=true to create it."
+          exit 1
+
+      - name: Checkout target repository
+        if: steps.config.outputs.repo_exists == 'true' || steps.config.outputs.create_repo == 'true'
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.config.outputs.target_repo }}
+          token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        continue-on-error: true
+
+      - name: Initialize empty repo
+        if: steps.checkout.outcome == 'failure' || steps.config.outputs.repo_exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # Fresh repo with no commits — init locally and push
+          mkdir -p workspace && cd workspace
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ steps.config.outputs.target_repo }}.git"
+          git config user.name "ralph[bot]"
+          git config user.email "ralph[bot]@users.noreply.github.com"
+
+          # Create initial commit so main branch exists
+          echo "# ${{ steps.config.outputs.target_name }}" > README.md
+          echo "" >> README.md
+          echo "Created by [Ralph](https://github.com/BearstOzawa/ralph) — Autonomous AI Coding Agent" >> README.md
+          git add README.md
+          git commit -m "chore: initialize repository [ralph]"
+          git branch -M main
+          git push -u origin main
+
+          # Move contents to workspace root for subsequent steps
+          cd ..
+          rm -rf .git
+          mv workspace/.git .
+          mv workspace/README.md . 2>/dev/null || true
+          rm -rf workspace
+
+          echo "RALPH_NEW_REPO=true" >> $GITHUB_ENV
+
+      - name: Checkout ralph.sh from central repo
+        if: steps.config.outputs.is_cross_repo == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          path: .ralph-central
+          sparse-checkout: |
+            ralph.sh
+            scripts/validator.sh
+            scripts/i18n.cjs
+            scripts/lib/planning.sh
+            scripts/lib/i18n.sh
+            scripts/lib/reporting.sh
+            scripts/lib/execution.sh
+            locales/core/zh-CN.json
+            locales/core/en-US.json
+          sparse-checkout-cone-mode: false
+
+      - name: Install OpenCode
+        if: steps.config.outputs.backend == 'opencode'
+        run: curl -fsSL https://opencode.ai/install | bash
+
+      - name: Notify Feishu — starting
+        env:
+          FEISHU_NOTIFY_URL: ${{ secrets.FEISHU_NOTIFY_URL }}
+          FEISHU_NOTIFY_SECRET: ${{ secrets.FEISHU_NOTIFY_SECRET }}
+        run: |
+          if [ -n "${FEISHU_NOTIFY_URL:-}" ]; then
+            curl -sS --max-time 10 -X POST "$FEISHU_NOTIFY_URL" \
+              -H "Authorization: Bearer ${FEISHU_NOTIFY_SECRET}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"event\":\"starting\",\"issue_number\":${{ steps.config.outputs.issue_number }},\"repo\":\"${{ steps.config.outputs.target_repo }}\",\"backend\":\"${{ steps.config.outputs.backend }}\",\"plan_mode\":\"${{ github.event.inputs.plan_mode || 'auto' }}\",\"run_url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"lang\":\"${{ steps.config.outputs.lang }}\",\"feishu_chat_id\":\"${{ steps.config.outputs.feishu_chat_id }}\"}" || true
+          fi
+
+      - name: Comment — Ralph is on it
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const supportRoot = '${{ steps.config.outputs.is_cross_repo }}' === 'true'
+              ? `${process.env.GITHUB_WORKSPACE}/.ralph-central`
+              : process.env.GITHUB_WORKSPACE;
+            const { t, normalizeLang } = require(`${supportRoot}/scripts/i18n.cjs`);
+            const lang = normalizeLang('${{ steps.config.outputs.lang }}' || 'zh-CN');
+            const backend = '${{ steps.config.outputs.backend }}';
+            const model = backend === 'llm' ? ` (${{ vars.RALPH_API_MODEL }})` : '';
+            const maxIter = '${{ github.event.inputs.max_iterations || '5' }}';
+            const planMode = '${{ github.event.inputs.plan_mode || 'auto' }}';
+            const requireApproval = '${{ github.event.inputs.require_approval }}' === 'true';
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            const targetRepo = '${{ steps.config.outputs.target_repo }}';
+            const branch = `ralph/issue-${{ steps.config.outputs.issue_number }}`;
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const planInfo = planMode !== 'off'
+              ? t(lang, 'mode_plan', planMode, requireApproval ? t(lang, 'mode_plan_approval_suffix') : '')
+              : t(lang, 'mode_legacy');
+            const title = t(lang, 'issue_on_it_title');
+            const pipeline = t(lang, 'issue_pipeline');
+            await github.rest.issues.createComment({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: ${{ steps.config.outputs.issue_number }},
+              body: [
+                '> [!NOTE]',
+                `> ${title}`,
+                '>',
+                `> ${t(lang, 'issue_summary')}`,
+                '>',
+                t(lang, 'issue_target_repo', targetRepo),
+                t(lang, 'issue_target_branch', branch),
+                `> 🔧 **Backend** \`${backend}${model}\``,
+                planInfo,
+                t(lang, 'max_iterations', maxIter),
+                t(lang, 'run_link', '${{ github.run_id }}', runUrl),
+                '>',
+                pipeline,
+              ].join('\n')
+            });
+
+      - name: Remove ai/ready label
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: '${{ steps.config.outputs.issue_owner }}',
+                repo: '${{ steps.config.outputs.issue_name }}',
+                issue_number: ${{ steps.config.outputs.issue_number }},
+                name: 'ai/ready'
+              });
+            } catch (e) { /* ignore */ }
+
+      - name: Run Ralph
+        if: github.event.inputs.review_only != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.config.outputs.issue_number }}
+          REPO_FULL_NAME: ${{ steps.config.outputs.target_repo }}
+          RALPH_AGENT_BACKEND: ${{ steps.config.outputs.backend }}
+          RALPH_MAX_ITERATIONS: ${{ github.event.inputs.max_iterations || '5' }}
+          RALPH_API_PROTOCOL: ${{ vars.RALPH_API_PROTOCOL || 'openai' }}
+          RALPH_API_BASE_URL: ${{ vars.RALPH_API_BASE_URL }}
+          RALPH_API_KEY: ${{ secrets.RALPH_API_KEY }}
+          RALPH_API_MODEL: ${{ vars.RALPH_API_MODEL }}
+          RALPH_PLAN_MODE: ${{ github.event.inputs.plan_mode || 'auto' }}
+          RALPH_PLAN_EXECUTION_MODE: ${{ github.event.inputs.plan_execution_mode || 'single' }}
+          RALPH_REQUIRE_PLAN_APPROVAL: ${{ github.event.inputs.require_approval || 'false' }}
+          RALPH_PLAN_TIMEOUT: ${{ vars.RALPH_PLAN_TIMEOUT || '30' }}
+          RALPH_ISSUE_REPO: ${{ steps.config.outputs.issue_owner }}/${{ steps.config.outputs.issue_name }}
+          RALPH_NEW_REPO: ${{ env.RALPH_NEW_REPO || 'false' }}
+          RALPH_LANG: ${{ steps.config.outputs.lang }}
+        run: |
+          if [ "${{ steps.config.outputs.is_cross_repo }}" = "true" ]; then
+            chmod +x .ralph-central/ralph.sh
+            ./.ralph-central/ralph.sh
+          else
+            git update-index --chmod=+x ralph.sh 2>/dev/null || true
+            chmod +x ralph.sh
+            ./ralph.sh
+          fi
+
+      - name: Read execution result
+        if: success() && github.event.inputs.review_only != 'true'
+        id: execution
+        run: |
+          STATUS=$(jq -r '.status // "legacy"' .ralph/execution-result.json 2>/dev/null || echo "legacy")
+          STAGE=$(jq -r '.stage // ""' .ralph/execution-result.json 2>/dev/null || echo "")
+          SUMMARY=$(jq -r '.summary // ""' .ralph/execution-result.json 2>/dev/null || echo "")
+          FAILURE_CODE=$(jq -r '.failure_code // ""' .ralph/execution-result.json 2>/dev/null || echo "")
+          CURRENT_SUBTASK=$(jq -r '.current_subtask // ""' .ralph/execution-result.json 2>/dev/null || echo "")
+          NEXT_SUBTASK=$(jq -r '.next_subtask // ""' .ralph/execution-result.json 2>/dev/null || echo "")
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "failure_code=$FAILURE_CODE" >> "$GITHUB_OUTPUT"
+          echo "message<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "current_subtask=$CURRENT_SUBTASK" >> "$GITHUB_OUTPUT"
+          echo "next_subtask=$NEXT_SUBTASK" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Changes
+        if: success() && github.event.inputs.review_only != 'true' && steps.execution.outputs.status != 'clarification_needed'
+        id: validate
+        run: |
+          if [ "${{ steps.config.outputs.is_cross_repo }}" = "true" ]; then
+            chmod +x .ralph-central/scripts/validator.sh
+            ./.ralph-central/scripts/validator.sh | tee .ralph/validation-output.json
+          else
+            chmod +x scripts/validator.sh
+            scripts/validator.sh | tee .ralph/validation-output.json
+          fi
+
+      - name: Create Pull Request
+        if: always() && ((steps.execution.outcome == 'success' && steps.execution.outputs.status != 'clarification_needed') || github.event.inputs.review_only == 'true')
+        id: create-pr
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = ${{ steps.config.outputs.issue_number }};
+            const branch = `ralph/issue-${issueNumber}`;
+            const backend = '${{ steps.config.outputs.backend }}';
+            const model = (backend === 'llm' || backend === 'opencode') ? ` (${{ vars.RALPH_API_MODEL }})` : '';
+            const targetOwner = '${{ steps.config.outputs.target_owner }}';
+            const targetName = '${{ steps.config.outputs.target_name }}';
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const executionStatus = '${{ steps.execution.outputs.status }}' || 'legacy';
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+
+            try {
+              await github.rest.repos.getBranch({
+                owner: targetOwner,
+                repo: targetName,
+                branch: branch
+              });
+            } catch (e) {
+              console.log(`Branch ${branch} not found, skipping PR creation`);
+              return;
+            }
+
+            const existing = await github.rest.pulls.list({
+              owner: targetOwner,
+              repo: targetName,
+              head: `${targetOwner}:${branch}`,
+              state: 'open'
+            });
+
+            const issue = await github.rest.issues.get({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: issueNumber
+            });
+            let validationSummary = '';
+            let validationResult = 'partial';
+            const supportRoot = '${{ steps.config.outputs.is_cross_repo }}' === 'true'
+              ? `${process.env.GITHUB_WORKSPACE}/.ralph-central`
+              : process.env.GITHUB_WORKSPACE;
+            const { t, normalizeLang } = require(`${supportRoot}/scripts/i18n.cjs`);
+            const lang = normalizeLang('${{ steps.config.outputs.lang }}' || 'zh-CN');
+            try {
+              const fs = require('fs');
+              const validation = JSON.parse(fs.readFileSync('.ralph/validation-result.json', 'utf8'));
+              const checks = validation.checks || {};
+              validationResult = validation.result || 'partial';
+              validationSummary = [
+                t(lang, 'pr_validation_result', validation.result),
+                t(lang, 'pr_validation_build', checks.build?.status || 'skip'),
+                t(lang, 'pr_validation_test', checks.test?.status || 'skip'),
+                t(lang, 'pr_validation_lint', checks.lint?.status || 'skip'),
+                t(lang, 'pr_validation_acceptance', checks.acceptance?.status || 'skip'),
+              ].join('\n');
+            } catch (e) {
+              console.log(`Validation summary unavailable: ${e.message}`);
+            }
+
+            let diffStats = '';
+            try {
+              const compare = await github.rest.repos.compareCommits({
+                owner: targetOwner,
+                repo: targetName,
+                base: 'main',
+                head: branch
+              });
+              const files = compare.data.files || [];
+              const added = files.filter(f => f.status === 'added').length;
+              const modified = files.filter(f => f.status === 'modified').length;
+              const totalAdd = files.reduce((s, f) => s + f.additions, 0);
+              const totalDel = files.reduce((s, f) => s + f.deletions, 0);
+              diffStats = t(lang, 'pr_table_changes', t(lang, 'pr_changes_summary', added, modified, totalAdd, totalDel));
+            } catch (e) { /* ignore */ }
+
+            try {
+              await github.rest.issues.getLabel({
+                owner: targetOwner,
+                repo: targetName,
+                name: 'ralph'
+              });
+            } catch (e) {
+              await github.rest.issues.createLabel({
+                owner: targetOwner,
+                repo: targetName,
+                name: 'ralph',
+                color: '6f42c1',
+                description: '🐺 Generated by Ralph AI'
+              });
+            }
+
+            try {
+              const prTitle = `🐺 feat(#${issueNumber}): ${issue.data.title}`;
+              const prBody = [
+                t(lang, 'pr_body_title'),
+                '',
+                t(lang, 'pr_body_closes', issueOwner, issueName, issueNumber),
+                '',
+                t(lang, 'pr_body_summary'),
+                t(lang, 'pr_body_source_issue', issueOwner, issueName, issueNumber, issue.data.html_url),
+                t(lang, 'pr_body_target_repo', targetOwner, targetName),
+                t(lang, 'pr_body_branch', branch),
+                t(lang, 'pr_body_run', '${{ github.run_id }}', runUrl),
+                '',
+                t(lang, 'pr_table_header'),
+                t(lang, 'pr_table_align'),
+                t(lang, 'pr_table_backend', `${backend}${model}`),
+                t(lang, 'pr_table_execution', executionStatus),
+                t(lang, 'pr_table_validation', validationResult),
+                t(lang, 'pr_table_branch', branch),
+                diffStats || t(lang, 'pr_table_changes', t(lang, 'pr_changes_unavailable')),
+                '',
+                t(lang, 'pr_validation_title'),
+                validationSummary || t(lang, 'pr_validation_unavailable'),
+                '',
+                t(lang, 'pr_review_title'),
+                t(lang, 'pr_review_scope'),
+                t(lang, 'pr_review_issue'),
+                t(lang, 'pr_review_logic'),
+                t(lang, 'pr_review_security'),
+                '',
+                '---',
+                t(lang, 'pr_footer'),
+              ].join('\n');
+
+              let pr;
+              if (existing.data.length > 0) {
+                pr = existing.data[0];
+                await github.rest.pulls.update({
+                  owner: targetOwner,
+                  repo: targetName,
+                  pull_number: pr.number,
+                  title: prTitle,
+                  body: prBody,
+                  state: 'open'
+                });
+                console.log(`PR already exists: #${pr.number}`);
+              } else {
+                const created = await github.rest.pulls.create({
+                  owner: targetOwner,
+                  repo: targetName,
+                  title: prTitle,
+                  body: prBody,
+                  head: branch,
+                  base: 'main',
+                  draft: validationResult !== 'pass'
+                });
+                pr = created.data;
+                console.log(`PR #${pr.number} created: ${pr.html_url}`);
+              }
+
+              if (validationResult === 'pass' && pr.draft) {
+                try {
+                  await github.request('POST /repos/{owner}/{repo}/pulls/{pull_number}/ready_for_review', {
+                    owner: targetOwner,
+                    repo: targetName,
+                    pull_number: pr.number
+                  });
+                  pr = (await github.rest.pulls.get({
+                    owner: targetOwner,
+                    repo: targetName,
+                    pull_number: pr.number
+                  })).data;
+                } catch (readyError) {
+                  core.warning(`Failed to mark PR ready for review: ${readyError.message}`);
+                }
+              }
+              core.setOutput('pr_number', String(pr.number));
+              core.setOutput('pr_url', pr.html_url);
+              core.setOutput('pr_draft', pr.draft ? 'true' : 'false');
+
+              await github.rest.issues.addLabels({
+                owner: targetOwner,
+                repo: targetName,
+                issue_number: pr.number,
+                labels: ['ralph']
+              });
+            } catch (e) {
+              if (e.message && e.message.includes('not permitted to create')) {
+                core.setFailed(
+                  `GITHUB_TOKEN does not have permission to create PRs. ` +
+                  `Go to Settings → Actions → General → Workflow permissions, ` +
+                  `and enable "Allow GitHub Actions to create and approve pull requests".`
+                );
+              } else {
+                core.warning(`PR creation failed: ${e.message}. Branch ${branch} is pushed — create PR manually.`);
+              }
+            }
+
+      - name: "🔍 Formal Code Review"
+        if: success() && steps.create-pr.outputs.pr_number && (steps.execution.outputs.status == 'completed' || github.event.inputs.review_only == 'true')
+        id: formal-review
+        uses: actions/github-script@v7
+        env:
+          RALPH_API_PROTOCOL: ${{ vars.RALPH_API_PROTOCOL || 'openai' }}
+          RALPH_API_BASE_URL: ${{ vars.RALPH_API_BASE_URL }}
+          RALPH_API_KEY: ${{ secrets.RALPH_API_KEY }}
+          RALPH_API_MODEL: ${{ vars.RALPH_API_MODEL }}
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const supportRoot = '${{ steps.config.outputs.is_cross_repo }}' === 'true'
+              ? `${process.env.GITHUB_WORKSPACE}/.ralph-central`
+              : process.env.GITHUB_WORKSPACE;
+            const { normalizeLang, buildFormalReviewSystemPrompt, buildFormalReviewUserPrompt } = require(`${supportRoot}/scripts/i18n.cjs`);
+            const prNumber = parseInt('${{ steps.create-pr.outputs.pr_number }}');
+            if (!prNumber) { console.log('No PR number, skipping review'); return; }
+            const lang = normalizeLang('${{ steps.config.outputs.lang }}' || 'zh-CN');
+
+            const targetOwner = '${{ steps.config.outputs.target_owner }}';
+            const targetName = '${{ steps.config.outputs.target_name }}';
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const issueNumber = ${{ steps.config.outputs.issue_number }};
+            const apiProtocol = process.env.RALPH_API_PROTOCOL || 'openai';
+            const apiBase = process.env.RALPH_API_BASE_URL;
+            const apiKey = process.env.RALPH_API_KEY;
+            const apiModel = process.env.RALPH_API_MODEL;
+
+            if (!apiKey) {
+              console.log('No API key, skipping formal review');
+              return;
+            }
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: targetOwner,
+              repo: targetName,
+              pull_number: prNumber,
+              per_page: 100
+            });
+
+            const diffText = files.map(f =>
+              `### ${f.filename} (${f.status}, +${f.additions} -${f.deletions})\n\`\`\`diff\n${f.patch || '(binary/large file)'}\n\`\`\``
+            ).join('\n\n');
+
+            const { data: issue } = await github.rest.issues.get({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: issueNumber
+            });
+
+            const systemPrompt = buildFormalReviewSystemPrompt(lang);
+            const userPrompt = buildFormalReviewUserPrompt(lang, issue.title, issue.body || '', diffText);
+
+            let reviewBody = '';
+            try {
+              let resp, data;
+              if (apiProtocol === 'anthropic') {
+                resp = await fetch(`${apiBase}/v1/messages`, {
+                  method: 'POST',
+                  headers: {
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: apiModel,
+                    max_tokens: 4096,
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: userPrompt }]
+                  })
+                });
+                data = await resp.json();
+                reviewBody = data.content?.[0]?.text || '';
+              } else {
+                resp = await fetch(`${apiBase}/v1/chat/completions`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: apiModel,
+                    messages: [
+                      { role: 'system', content: systemPrompt },
+                      { role: 'user', content: userPrompt }
+                    ],
+                    max_tokens: 4096,
+                    temperature: 0.1
+                  })
+                });
+                data = await resp.json();
+                reviewBody = data.choices?.[0]?.message?.content || '';
+              }
+              reviewBody = reviewBody.replace(/<think>[\s\S]*?<\/think>/g, '');
+              reviewBody = reviewBody.replace(/^```\w*\n/gm, '').replace(/^```$/gm, '');
+            } catch (e) {
+              console.log(`Formal review LLM call failed: ${e.message}`);
+              return;
+            }
+
+            if (!reviewBody || reviewBody.length < 20) {
+              console.log('Empty or too short review response, skipping');
+              return;
+            }
+
+            try {
+              await github.rest.pulls.createReview({
+                owner: targetOwner,
+                repo: targetName,
+                pull_number: prNumber,
+                event: 'COMMENT',
+                body: reviewBody
+              });
+              console.log(`Formal code review posted on PR #${prNumber}`);
+              core.setOutput('review_posted', 'true');
+            } catch (e) {
+              console.log(`createReview failed (${e.message}), falling back to comment`);
+              await github.rest.issues.createComment({
+                owner: targetOwner,
+                repo: targetName,
+                issue_number: prNumber,
+                body: reviewBody
+              });
+              core.setOutput('review_posted', 'true');
+            }
+
+      - name: Update issue labels
+        if: success() && github.event.inputs.review_only != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = ${{ steps.config.outputs.issue_number }};
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const executionStatus = '${{ steps.execution.outputs.status }}' || 'legacy';
+            const failureCode = '${{ steps.execution.outputs.failure_code }}' || '';
+            const fs = require('fs');
+            let validationResult = 'partial';
+            try {
+              const validation = JSON.parse(fs.readFileSync('.ralph/validation-result.json', 'utf8'));
+              validationResult = validation.result || 'partial';
+            } catch (e) {
+              console.log(`Validation result unavailable: ${e.message}`);
+            }
+            try {
+              await github.rest.issues.removeLabel({
+                owner: issueOwner,
+                repo: issueName,
+                issue_number: issueNumber,
+                name: 'ai/ready'
+              });
+            } catch (e) { /* label might not exist */ }
+            for (const label of ['ai/done', 'ai/failed']) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: issueOwner,
+                  repo: issueName,
+                  issue_number: issueNumber,
+                  name: label
+                });
+              } catch (e) { /* ignore */ }
+            }
+
+            if (executionStatus === 'completed' && validationResult === 'pass') {
+              await github.rest.issues.addLabels({
+                owner: issueOwner,
+                repo: issueName,
+                issue_number: issueNumber,
+                labels: ['ai/done']
+              });
+              await github.rest.issues.update({
+                owner: issueOwner,
+                repo: issueName,
+                issue_number: issueNumber,
+                state: 'closed'
+              });
+            } else if (executionStatus === 'blocked' || executionStatus === 'failed') {
+              await github.rest.issues.addLabels({
+                owner: issueOwner,
+                repo: issueName,
+                issue_number: issueNumber,
+                labels: ['ai/failed']
+              });
+            }
+
+      - name: Comment — clarification needed
+        if: success() && steps.execution.outputs.status == 'clarification_needed'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const supportRoot = '${{ steps.config.outputs.is_cross_repo }}' === 'true'
+              ? `${process.env.GITHUB_WORKSPACE}/.ralph-central`
+              : process.env.GITHUB_WORKSPACE;
+            const { t, normalizeLang } = require(`${supportRoot}/scripts/i18n.cjs`);
+            const lang = normalizeLang('${{ steps.config.outputs.lang }}' || 'zh-CN');
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            let reason = '${{ steps.execution.outputs.summary }}' || 'clarification required';
+            try {
+              const execution = JSON.parse(fs.readFileSync('.ralph/execution-result.json', 'utf8'));
+              reason = execution.summary || reason;
+            } catch (e) { /* ignore */ }
+            await github.rest.issues.createComment({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: ${{ steps.config.outputs.issue_number }},
+              body: [
+                '> [!IMPORTANT]',
+                `> ${t(lang, 'clarification_title')}`,
+                '>',
+                `> ${t(lang, 'clarification_status')}`,
+                '>',
+                t(lang, 'clarification_reason', reason),
+                t(lang, 'clarification_run', runUrl),
+              ].join('\n')
+            });
+
+      - name: Notify Feishu — clarification needed
+        if: success() && steps.execution.outputs.status == 'clarification_needed'
+        env:
+          FEISHU_NOTIFY_URL: ${{ secrets.FEISHU_NOTIFY_URL }}
+          FEISHU_NOTIFY_SECRET: ${{ secrets.FEISHU_NOTIFY_SECRET }}
+        run: |
+          if [ -n "${FEISHU_NOTIFY_URL:-}" ]; then
+            curl -sS --max-time 10 -X POST "$FEISHU_NOTIFY_URL" \
+              -H "Authorization: Bearer ${FEISHU_NOTIFY_SECRET}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"event\":\"clarification_needed\",\"issue_number\":${{ steps.config.outputs.issue_number }},\"repo\":\"${{ steps.config.outputs.target_repo }}\",\"run_url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"lang\":\"${{ steps.config.outputs.lang }}\",\"feishu_chat_id\":\"${{ steps.config.outputs.feishu_chat_id }}\"}" || true
+          fi
+
+      - name: Auto-merge PR
+        if: success() && github.event.inputs.review_only != 'true' && github.event.inputs.auto_merge == 'true' && steps.execution.outputs.status == 'completed'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = ${{ steps.config.outputs.issue_number }};
+            const branch = `ralph/issue-${issueNumber}`;
+            const targetOwner = '${{ steps.config.outputs.target_owner }}';
+            const targetName = '${{ steps.config.outputs.target_name }}';
+            await new Promise(r => setTimeout(r, 5000));
+
+            const prs = await github.rest.pulls.list({
+              owner: targetOwner,
+              repo: targetName,
+              head: `${targetOwner}:${branch}`,
+              state: 'open'
+            });
+
+            if (prs.data.length === 0) return;
+            const pr = prs.data[0];
+
+            try {
+              await github.rest.pulls.merge({
+                owner: targetOwner,
+                repo: targetName,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+              console.log(`PR #${pr.number} merged`);
+            } catch (e) {
+              console.log(`Auto-merge failed: ${e.message}`);
+            }
+
+      - name: Queue next Ralph run
+        if: success() && steps.execution.outputs.status == 'needs_continue'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const dispatchRef = (context.ref && context.ref.replace('refs/heads/', '')) || context.payload.repository.default_branch;
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ralph.yml',
+              ref: dispatchRef,
+              inputs: {
+                issue_number: '${{ steps.config.outputs.issue_number }}',
+                target_repo: '${{ steps.config.outputs.target_repo }}',
+                issue_repo: '${{ steps.config.outputs.issue_owner }}/${{ steps.config.outputs.issue_name }}',
+                create_repo: '${{ github.event.inputs.create_repo || 'false' }}',
+                repo_visibility: '${{ github.event.inputs.repo_visibility || 'public' }}',
+                repo_description: '${{ github.event.inputs.repo_description || '' }}',
+                backend: '${{ steps.config.outputs.backend }}',
+                lang: '${{ steps.config.outputs.lang }}',
+                max_iterations: '${{ github.event.inputs.max_iterations || '5' }}',
+                plan_mode: '${{ github.event.inputs.plan_mode || 'auto' }}',
+                plan_execution_mode: '${{ github.event.inputs.plan_execution_mode || 'single' }}',
+                require_approval: 'false',
+                review_only: 'false',
+                auto_merge: '${{ github.event.inputs.auto_merge || 'false' }}',
+                feishu_chat_id: '${{ steps.config.outputs.feishu_chat_id }}'
+              }
+            });
+
+      - name: Comment — Ralph continuing
+        if: success() && steps.execution.outputs.status == 'needs_continue'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const supportRoot = '${{ steps.config.outputs.is_cross_repo }}' === 'true'
+              ? `${process.env.GITHUB_WORKSPACE}/.ralph-central`
+              : process.env.GITHUB_WORKSPACE;
+            const { t, normalizeLang } = require(`${supportRoot}/scripts/i18n.cjs`);
+            const lang = normalizeLang('${{ steps.config.outputs.lang }}' || 'zh-CN');
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const currentSubtask = '${{ steps.execution.outputs.current_subtask }}';
+            const nextSubtask = '${{ steps.execution.outputs.next_subtask }}';
+            const prUrl = '${{ steps.create-pr.outputs.pr_url }}' || `${{ github.server_url }}/${{ steps.config.outputs.target_repo }}/pulls`;
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            const title = t(lang, 'continue_title');
+            const statusMsg = t(lang, 'continue_status', currentSubtask || 'n/a', nextSubtask || 'pending');
+            await github.rest.issues.createComment({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: ${{ steps.config.outputs.issue_number }},
+              body: [
+                '> [!NOTE]',
+                `> ${title}`,
+                '>',
+                `> ${statusMsg}`,
+                '>',
+                `> ${t(lang, 'continue_summary')}`,
+                '>',
+                t(lang, 'continue_review_pr', prUrl),
+                t(lang, 'continue_view_run', runUrl),
+              ].join('\n')
+            });
+
+      - name: Notify Feishu — success
+        if: success() && steps.execution.outputs.status != 'needs_continue' && steps.execution.outputs.status != 'clarification_needed'
+        env:
+          FEISHU_NOTIFY_URL: ${{ secrets.FEISHU_NOTIFY_URL }}
+          FEISHU_NOTIFY_SECRET: ${{ secrets.FEISHU_NOTIFY_SECRET }}
+        run: |
+          if [ -n "${FEISHU_NOTIFY_URL:-}" ]; then
+            PR_URL="${{ steps.create-pr.outputs.pr_url }}"
+            REVIEW_POSTED="${{ steps.formal-review.outputs.review_posted }}"
+            curl -sS --max-time 10 -X POST "$FEISHU_NOTIFY_URL" \
+              -H "Authorization: Bearer ${FEISHU_NOTIFY_SECRET}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"event\":\"success\",\"issue_number\":${{ steps.config.outputs.issue_number }},\"repo\":\"${{ steps.config.outputs.target_repo }}\",\"pr_url\":\"${PR_URL}\",\"review_posted\":\"${REVIEW_POSTED}\",\"run_url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"lang\":\"${{ steps.config.outputs.lang }}\",\"feishu_chat_id\":\"${{ steps.config.outputs.feishu_chat_id }}\"}" || true
+          fi
+
+      - name: Comment — Ralph finished
+        if: success() && steps.execution.outputs.status != 'needs_continue' && steps.execution.outputs.status != 'clarification_needed'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const supportRoot = '${{ steps.config.outputs.is_cross_repo }}' === 'true'
+              ? `${process.env.GITHUB_WORKSPACE}/.ralph-central`
+              : process.env.GITHUB_WORKSPACE;
+            const { t, normalizeLang } = require(`${supportRoot}/scripts/i18n.cjs`);
+            const lang = normalizeLang('${{ steps.config.outputs.lang }}' || 'zh-CN');
+            const prUrl = '${{ steps.create-pr.outputs.pr_url }}' || `${{ github.server_url }}/${{ steps.config.outputs.target_repo }}/pulls`;
+            const reviewPosted = '${{ steps.formal-review.outputs.review_posted }}' === 'true';
+            const prDraft = '${{ steps.create-pr.outputs.pr_draft }}' === 'true';
+            const executionStatus = '${{ steps.execution.outputs.status }}' || 'legacy';
+            const executionStage = '${{ steps.execution.outputs.stage }}' || '';
+            const failureCode = '${{ steps.execution.outputs.failure_code }}' || '';
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            const reviewNote = reviewPosted ? t(lang, 'finished_review_note') : '';
+            const title = t(lang, 'finished_title');
+            const statusMsg = executionStatus === 'completed'
+              ? (prDraft
+                  ? t(lang, 'finished_completed_draft')
+                  : t(lang, 'finished_completed_ready'))
+              : t(lang, 'finished_manual_check');
+            let validationResult = 'unknown';
+            let executionMessage = '${{ steps.execution.outputs.summary }}' || executionStatus;
+            try {
+              const fs = require('fs');
+              const validation = JSON.parse(fs.readFileSync('.ralph/validation-result.json', 'utf8'));
+              validationResult = validation.result || 'unknown';
+            } catch (e) { /* ignore */ }
+            await github.rest.issues.createComment({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: ${{ steps.config.outputs.issue_number }},
+              body: [
+                '> [!TIP]',
+                `> ${title}`,
+                '>',
+                `> ${statusMsg}`,
+                '>',
+                executionStage ? `> 🧱 **Stage** \`${executionStage}\`` : '',
+                failureCode ? `> 🧾 **Failure Code** \`${failureCode}\`` : '',
+                t(lang, 'finished_execution', executionMessage),
+                '>',
+                t(lang, 'finished_validation', validationResult),
+                '>',
+                reviewNote,
+                `> 👉 [**Review PR**](${prUrl})`,
+                t(lang, 'finished_view_run', runUrl),
+              ].join('\n')
+            });
+
+      - name: On failure — update labels
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = ${{ steps.config.outputs.issue_number }};
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            try {
+              await github.rest.issues.removeLabel({
+                owner: issueOwner,
+                repo: issueName,
+                issue_number: issueNumber,
+                name: 'ai/ready'
+              });
+            } catch (e) { /* label might not exist */ }
+            await github.rest.issues.addLabels({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: issueNumber,
+              labels: ['ai/failed']
+            });
+
+      - name: Notify Feishu — failed
+        if: failure()
+        env:
+          FEISHU_NOTIFY_URL: ${{ secrets.FEISHU_NOTIFY_URL }}
+          FEISHU_NOTIFY_SECRET: ${{ secrets.FEISHU_NOTIFY_SECRET }}
+        run: |
+          if [ -n "${FEISHU_NOTIFY_URL:-}" ]; then
+            curl -sS --max-time 10 -X POST "$FEISHU_NOTIFY_URL" \
+              -H "Authorization: Bearer ${FEISHU_NOTIFY_SECRET}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"event\":\"failed\",\"issue_number\":${{ steps.config.outputs.issue_number }},\"repo\":\"${{ steps.config.outputs.target_repo }}\",\"run_url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"lang\":\"${{ steps.config.outputs.lang }}\",\"feishu_chat_id\":\"${{ steps.config.outputs.feishu_chat_id }}\"}" || true
+          fi
+
+      - name: Comment — Ralph failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RALPH_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const supportRoot = '${{ steps.config.outputs.is_cross_repo }}' === 'true'
+              ? `${process.env.GITHUB_WORKSPACE}/.ralph-central`
+              : process.env.GITHUB_WORKSPACE;
+            const { t, normalizeLang } = require(`${supportRoot}/scripts/i18n.cjs`);
+            const lang = normalizeLang('${{ steps.config.outputs.lang }}' || 'zh-CN');
+            const issueNumber = ${{ steps.config.outputs.issue_number }};
+            const branch = `ralph/issue-${issueNumber}`;
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const targetOwner = '${{ steps.config.outputs.target_owner }}';
+            const targetName = '${{ steps.config.outputs.target_name }}';
+            const issueOwner = '${{ steps.config.outputs.issue_owner }}';
+            const issueName = '${{ steps.config.outputs.issue_name }}';
+            const prUrl = '${{ steps.create-pr.outputs.pr_url }}';
+            let executionReason = '${{ steps.execution.outputs.summary }}' || 'workflow failed';
+            let executionCode = '${{ steps.execution.outputs.failure_code }}' || '';
+            let branchNote = '';
+            let prNote = '';
+            try {
+              const fs = require('fs');
+              const execution = JSON.parse(fs.readFileSync('.ralph/execution-result.json', 'utf8'));
+              executionReason = execution.summary || execution.status || executionReason;
+              executionCode = execution.failure_code || executionCode;
+            } catch (e) { /* ignore */ }
+            try {
+              await github.rest.repos.getBranch({
+                owner: targetOwner,
+                repo: targetName,
+                branch: branch
+              });
+              branchNote = t(lang, 'failed_branch_note', branch);
+            } catch (e) { /* branch doesn't exist */ }
+            if (prUrl) {
+              prNote = t(lang, 'failed_pr_note', prUrl);
+            }
+            const title = t(lang, 'failed_title');
+            const statusMsg = t(lang, 'failed_status');
+            const tipsSummary = t(lang, 'failed_tips_title');
+            const tips = [
+              t(lang, 'failed_tip_1'),
+              t(lang, 'failed_tip_2'),
+              t(lang, 'failed_tip_3'),
+              t(lang, 'failed_tip_4'),
+            ];
+            await github.rest.issues.createComment({
+              owner: issueOwner,
+              repo: issueName,
+              issue_number: issueNumber,
+              body: [
+                '> [!WARNING]',
+                `> ${title}`,
+                '>',
+                `> ${statusMsg}`,
+                '>',
+                executionCode ? `> 🧾 **Failure Code** \`${executionCode}\`` : '',
+                t(lang, 'failed_reason', executionReason),
+                '>',
+                branchNote,
+                prNote,
+                '> <details>',
+                `> <summary>${tipsSummary}</summary>`,
+                '>',
+                ...tips,
+                '>',
+                '> </details>',
+                '>',
+                `> [${t(lang, 'view_logs')}](${runUrl})`,
+              ].join('\n')
+            });
