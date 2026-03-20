@@ -70,9 +70,9 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
   margin-top: 18px;
-  padding: 14px 18px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: rgba(8, 17, 31, 0.72);
@@ -81,7 +81,7 @@ img {
 }
 
 .brand img {
-  width: 126px;
+  width: 108px;
 }
 
 .nav,
@@ -92,14 +92,21 @@ img {
 .hero-meta {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .nav a,
 .ghost-link,
 .footer-links a {
   color: var(--muted);
+  font-size: 14px;
   transition: color 160ms ease;
+}
+
+.lang-link {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .nav a:hover,
@@ -429,12 +436,13 @@ pre {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 0 18px;
+  min-height: 40px;
+  padding: 0 16px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--primary), var(--primary-strong));
   color: #062011;
   font-weight: 700;
+  font-size: 14px;
   box-shadow: 0 16px 40px rgba(63, 211, 154, 0.26);
 }
 
@@ -508,7 +516,7 @@ pre {
 
   .topbar {
     flex-wrap: wrap;
-    border-radius: 28px;
+    border-radius: 24px;
   }
 
   .nav-toggle {
